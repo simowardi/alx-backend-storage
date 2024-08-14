@@ -8,7 +8,7 @@ from typing import Union, Callable, Any
 from functools import wraps
 
 
-def track_call_count(method: Callable) -> Callable:
+def count_calls(method: Callable) -> Callable:
     """
     Tracks the number of calls made to a method in a Cache class.
     """
@@ -23,7 +23,7 @@ def track_call_count(method: Callable) -> Callable:
     return invoker
 
 
-def track_call_history(method: Callable) -> Callable:
+def call_history(method: Callable) -> Callable:
     """
     Tracks the call details of a method in a Cache class.
     """
@@ -43,26 +43,26 @@ def track_call_history(method: Callable) -> Callable:
     return invoker
 
 
-def display_call_history(method: Callable) -> None:
+def replay(method: Callable) -> None:
     """
     Displays the call history of a Cache class' method.
     """
     if method is None or not hasattr(method, '__self__'):
         return
-    redis_inst = getattr(method.__self__, '_redis', None)
-    if not isinstance(redis_inst, redis.Redis):
+    redis_instance = getattr(method.__self__, '_redis', None)
+    if not isinstance(redis_instance, redis.Redis):
         return
-    m_name = method.__qualname__
-    in_key = '{}:inputs'.format(m_name)
-    out_key = '{}:outputs'.format(m_name)
+    method_name = method.__qualname__
+    in_key = '{}:inputs'.format(method_name)
+    out_key = '{}:outputs'.format(method_name)
     call_count = 0
-    if redis_inst.exists(m_name) != 0:
-        call_count = int(redis_inst.get(m_name))
-    print(f'{m_name} was called {call_count} times:')
-    m_inputs = redis_inst.lrange(in_key, 0, -1)
-    m_outputs = redis_inst.lrange(out_key, 0, -1)
-    for m_input, m_output in zip(m_inputs, m_outputs):
-        print(f'{m_name}(*{m_input.decode("utf-8")}) -> {m_output}')
+    if redis_instance.exists(method_name) != 0:
+        call_count = int(redis_instance.get(method_name))
+    print(f'{method_name} was called {call_count} times:')
+    method_inputs = redis_instance.lrange(in_key, 0, -1)
+    method_outputs = redis_instance.lrange(out_key, 0, -1)
+    for m_input, m_output in zip(method_inputs, method_outputs):
+        print(f'{method_name}(*{m_input.decode("utf-8")}) -> {m_output}')
 
 
 class Cache:
@@ -77,8 +77,8 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
-    @track_call_history
-    @track_call_count
+    @call_history
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Generates a random key, stores the input data in Redis
